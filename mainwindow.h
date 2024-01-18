@@ -22,7 +22,6 @@ struct myPoint
     int m_r;
     int m_g;
     int m_b;
-    int test;
 };
 
 class MainWindow : public QMainWindow
