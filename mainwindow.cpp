@@ -208,8 +208,6 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
 void MainWindow::mouseMoveEvent(QMouseEvent *event)
 {
     qDebug()<<"=========================这是鼠标移动事件";
-//        m_movePoint = event->pos();
-//        m_Point = event->pos();
 
     // 把坐标原点从窗口左上角转为QLabel左上角，得到转化坐标系后的点坐标，保存到pointList
     // 如果干脆不转了，画图的画布也直接用this，结果就是图片置顶覆盖了画在this的笔迹
@@ -222,20 +220,12 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
     }
     m_movePoint = labelPos;
 
-    // 调用画图函数
-    MyDraw(m_Point,m_movePoint);
 
-//        尝试转为lbl_show1->pixmap的左上角，而不是上面三行代码的转为QLabel左上角
-//        QPoint labelPos = ui->lbl_show1->mapFrom(this, event->pos());
-//        int edgeHeight = (ui->lbl_show1->size().height()- ui->lbl_show1->pixmap()->size().height())/2;
-//        labelPos.setY(labelPos.y() - edgeHeight);   // 把原本的y值减去Label和pixmap之间的上方空白高度，得到pixmap坐标系下y值
-
-//        m_movePoint = labelPos;
-//        m_Point = labelPos;
-
-//        qDebug() << "转换坐标系后的Point Coordinates: (" << m_Point.x() << ", " << m_Point.y() << ")";
     if(event->buttons()==Qt::LeftButton && m_bCliked && IsRead && ToolType == 0)
     {
+        // 调用画图函数
+        MyDraw(m_Point,m_movePoint);
+        // 保存点信息
         myPoint mypoint;
         mypoint.point=m_Point;
         mypoint.movePoint=m_movePoint;
@@ -245,7 +235,7 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
 
         pointList.append(mypoint);   // pointList仍然保存了所划过的所有点的信息，但是除了保存之外没其他用处了。
     }
-    // 橡皮
+    // 橡皮painter.eraseRect
     else if(event->buttons()==Qt::LeftButton && m_bCliked && IsRead && ToolType==1){
         QPainter painter(pixmap_mouse);  // 获取画过了的画布
 
