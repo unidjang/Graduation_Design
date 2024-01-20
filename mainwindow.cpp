@@ -18,10 +18,14 @@ MainWindow::MainWindow(QWidget *parent)
     IsRead = false;
     m_Font.setPointSize(5);
     m_Font.setFamily("Microsoft YaHei");
-    ui->lbl_show1->setAttribute(Qt::WA_OpaquePaintEvent);
+    ui->lbl_show1->setAttribute(Qt::WA_OpaquePaintEvent);   // 设为不透明
     // 初始化画笔
     pen = new QPen();
-
+    // 初始画具为划线工具
+    ToolType = 0;
+    // 初始化画布
+    pixmap_mouse = new QPixmap(ui->lbl_show1->size());   // 每次都清空画布，重新画。要画的点一次比一次多
+    pixmap_mouse->fill(Qt::transparent);
 }
 
 MainWindow::~MainWindow()
@@ -188,47 +192,7 @@ void MainWindow::CreateMenu()
 
 void MainWindow::paintEvent(QPaintEvent *event)
 {
-    // 创建一个QPixmap对象，作为绘图设备
-    if (IsRead){
-        qDebug()<<"此时调用了paintEvent函数UI，且IsRead=true";   // 程序一开始会自动调用一次，后续按住鼠标移动时也会一直调用
-        QPixmap pixmap(ui->lbl_show1->size());
-
-        // bug：此时点坐标是以label左上角为原点，但画的时候，画布是图片pixmap的左上角，所以又发生了偏移，向下偏移
-        // 要是能把整个Label当画布就好了，可惜不行，虽然语法不报错，但运行后输出：QPainter::setPen: Painter not active；
-        // 或者要是能把点坐标转为以pixmap的左上角就好了，可惜也不行，pixmap对象没有转换坐标的mapFrom函数。
-        // 解决办法：直接修改每个点的y值
-        // pixmap = ui->lbl_show1->pixmap()->copy(QRect(0,0,w,h));
-        pixmap = ui->lbl_show1->pixmap()->copy();
-        QPainter painter(&pixmap);
-
-    //    QPainter painter(ui->TestLabel);   // 虽然语法不报错，但运行后输出：QPainter::setPen: Painter not active；
-    //    QPainter painter(this);
-
-
-        painter.setFont(m_Font);
-        qDebug()<<pointList.length();   // 实时输出当前点的个数
-        // 在画布pixmap上，以某点为原点建立坐标系，根据列表里的点坐标画点
-        for(int i=0;i<pointList.size();i++)
-        {
-            myPoint mypoint=pointList[i];
-//            QPen pen(QBrush(QColor(mypoint.m_r,mypoint.m_g,mypoint.m_b)),5);  // 线条宽度为5个像素
-
-//            pen->setCapStyle(Qt::PenCapStyle::RoundCap);   //设为圆角之后，虽不报错，但画不出来了是为什么
-            pen->setWidth(5);  //粗细
-            pen->setColor(QColor(mypoint.m_r,mypoint.m_g,mypoint.m_b));
-            pen->setStyle(Qt::PenStyle::SolidLine);
-
-//            painter.setPen(pen);
-            painter.setPen(*pen);
-            painter.drawLine(mypoint.point.x(),mypoint.point.y(),mypoint.movePoint.x(),mypoint.movePoint.y());
-        }
-
-        // ================将绘制好的图像设置为Label的显示内容
-        // 出现了循环调用的原因：setPixmap重绘QLabel时，会内置调用QWidget的paintEvent。
-        // 解决方法就是给QLabel指定“WA_OpaquePaintEvent”属性，避免透明背景，这样下层的控件图层不需要重绘来实现本控件的透明效果。
-        ui->lbl_show1->setPixmap(pixmap);
-
-    }
+    // 此处代码已封装到Draw函数
 
 }
 
@@ -243,28 +207,35 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
 
 void MainWindow::mouseMoveEvent(QMouseEvent *event)
 {
-    qDebug()<<"这是鼠标移动事件";
-    if(event->buttons()==Qt::LeftButton&&m_bCliked&&IsRead)
-    {
+    qDebug()<<"=========================这是鼠标移动事件";
 //        m_movePoint = event->pos();
 //        m_Point = event->pos();
 
-        // 把坐标原点从窗口左上角转为QLabel左上角，得到转化坐标系后的点坐标，保存到pointList
-        // 如果干脆不转了，画图的画布也直接用this，结果就是图片置顶覆盖了画在this的笔迹
-//        QPoint labelPos = ui->lbl_show1->mapFrom(this, event->pos());  // 法一
+    // 把坐标原点从窗口左上角转为QLabel左上角，得到转化坐标系后的点坐标，保存到pointList
+    // 如果干脆不转了，画图的画布也直接用this，结果就是图片置顶覆盖了画在this的笔迹
+    QPoint labelPos = ui->label->mapFrom(this, event->pos());
+    // 之前调用drawLine每次就是画个点，是因为这俩点原本都直接等于同一个点labelPos，所以鼠标动得快时会出现断断续续的线。
+    if(m_movePoint.isNull()){
+        m_Point = labelPos;
+    }else{
+        m_Point = m_movePoint;    // 每次都让直线的起始点等于上一次的终点
+    }
+    m_movePoint = labelPos;
+
+    // 调用画图函数
+    MyDraw(m_Point,m_movePoint);
+
+//        尝试转为lbl_show1->pixmap的左上角，而不是上面三行代码的转为QLabel左上角
+//        QPoint labelPos = ui->lbl_show1->mapFrom(this, event->pos());
+//        int edgeHeight = (ui->lbl_show1->size().height()- ui->lbl_show1->pixmap()->size().height())/2;
+//        labelPos.setY(labelPos.y() - edgeHeight);   // 把原本的y值减去Label和pixmap之间的上方空白高度，得到pixmap坐标系下y值
+
 //        m_movePoint = labelPos;
 //        m_Point = labelPos;
 
-        // 尝试转为Pixmap左上角，而不是上面三行代码的转为QLabel左上角
-        QPoint labelPos = ui->lbl_show1->mapFrom(this, event->pos());  // 法一
-        int edgeHeight = (ui->lbl_show1->size().height()- ui->lbl_show1->pixmap()->size().height())/2;
-        labelPos.setY(labelPos.y() - edgeHeight);   // 把原本的y值减去Label和pixmap之间的上方空白高度，得到pixmap坐标系下y值
-
-        m_movePoint = labelPos;
-        m_Point = labelPos;
-
-        qDebug() << "转换坐标系后的Point Coordinates: (" << m_Point.x() << ", " << m_Point.y() << ")";
-
+//        qDebug() << "转换坐标系后的Point Coordinates: (" << m_Point.x() << ", " << m_Point.y() << ")";
+    if(event->buttons()==Qt::LeftButton && m_bCliked && IsRead && ToolType == 0)
+    {
         myPoint mypoint;
         mypoint.point=m_Point;
         mypoint.movePoint=m_movePoint;
@@ -272,7 +243,18 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
         mypoint.m_g=m_G;
         mypoint.m_b=m_B;
 
-        pointList.append(mypoint);
+        pointList.append(mypoint);   // pointList仍然保存了所划过的所有点的信息，但是除了保存之外没其他用处了。
+    }
+    // 橡皮
+    else if(event->buttons()==Qt::LeftButton && m_bCliked && IsRead && ToolType==1){
+        QPainter painter(pixmap_mouse);  // 获取画过了的画布
+
+        int eraserSize = 10;   // 橡皮大小
+        painter.setCompositionMode(QPainter::CompositionMode_Clear);
+        painter.eraseRect(QRect(m_Point, m_movePoint).normalized().adjusted(-eraserSize, -eraserSize, eraserSize, eraserSize));  // TODO 橡皮擦大小怎么调整
+        painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+
+        ui->label->setPixmap(*pixmap_mouse);
     }
     update();
 }
@@ -280,6 +262,9 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
 void MainWindow::mouseReleaseEvent(QMouseEvent *event)
 {
     m_bCliked=false;
+    // 放开鼠标时，重新初始化这两点为空，避免了两条线段头尾相连
+    m_Point = QPoint();
+    m_movePoint = QPoint();
 
     if(event->button()==Qt::RightButton)
     {
@@ -296,7 +281,8 @@ void MainWindow::onDeleteClicked()
     pointList.clear();
     needUpdate = true;
     update();
-    ui->lbl_show1->setPixmap(QPixmap::fromImage(disimage));
+//    ui->lbl_show1->setPixmap(QPixmap::fromImage(disimage));
+    ui->label->clear();   // 清空画布
 }
 
 void MainWindow::onColorClicked()
@@ -306,4 +292,56 @@ void MainWindow::onColorClicked()
     m_R=color.red();
     m_G=color.green();
     m_B=color.blue();
+}
+
+void MainWindow::on_pushButton_clicked()
+{
+    if(ToolType == 0){
+        ToolType = 1;
+    }
+    else{
+        ToolType = 0;
+    }
+
+}
+
+QPixmap MainWindow::overlapping(const QPixmap *backgroundPixmap, const QPixmap *overlayPixmap)
+{
+    QPixmap resultPixmap = *backgroundPixmap;
+
+    // 使用 QPainter 在 resultPixmap 上绘制 overlayPixmap
+    QPainter painter(&resultPixmap);
+    painter.drawPixmap(0, 0, *overlayPixmap);
+
+    return resultPixmap;
+}
+
+
+void MainWindow::MyDraw(QPoint m_Point,QPoint m_movePoint){
+    QPainter painter(pixmap_mouse);
+
+//    QPainter painter(ui->TestLabel);   // 虽然语法不报错，但运行后输出：QPainter::setPen: Painter not active；
+    painter.setFont(m_Font);
+    qDebug()<<"pointList的长度为："<<pointList.length();   // 实时输出当前点的个数
+    // 在画布pixmap上，以某点为原点建立坐标系，根据列表里的点坐标画点
+    for(int i=0;i<pointList.size();i++)
+    {
+        myPoint mypoint=pointList[i];
+
+        pen->setCapStyle(Qt::PenCapStyle::RoundCap);   //设为圆角
+        pen->setWidth(5);  //粗细
+        pen->setColor(QColor(mypoint.m_r,mypoint.m_g,mypoint.m_b));
+        pen->setStyle(Qt::PenStyle::SolidLine);
+
+//            painter.setPen(pen);
+        painter.setPen(*pen);
+        painter.drawLine(m_Point.x(),m_Point.y(),m_movePoint.x(),m_movePoint.y());
+    }
+
+    // ================将绘制好的图像设置为Label的显示内容
+    // 出现了循环调用的原因：setPixmap重绘QLabel时，会内置调用QWidget的paintEvent。
+    // 解决方法就是给QLabel指定“WA_OpaquePaintEvent”属性，避免透明背景，这样下层的控件图层不需要重绘来实现本控件的透明效果。
+//        ui->lbl_show1->setPixmap(pixmap);
+
+    ui->label->setPixmap(*pixmap_mouse);  // TODO：但是为啥label的setPixmap不会触发paintEvent？
 }

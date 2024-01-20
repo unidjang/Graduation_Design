@@ -34,10 +34,15 @@ public:
     void CreateMenu();
 
     QImage imageCenter(QImage qimage, QLabel *qLabel);
+    QPixmap overlapping(const QPixmap *backgroundPixmap, const QPixmap *overlayPixmap);
+    void MyDraw(QPoint m_Point,QPoint m_movePoint);
+
     bool needUpdate;
     bool IsRead;
     QImage disimage;
     QPen *pen;
+    int ToolType;
+    QPixmap *pixmap_mouse;
 
 protected:
     void paintEvent(QPaintEvent *event);
@@ -57,6 +62,8 @@ private slots:
     void on_btn_MeanImage_clicked();
 
     void on_btn_canny_clicked();
+
+    void on_pushButton_clicked();
 
 private:
     QPainter *painter;
