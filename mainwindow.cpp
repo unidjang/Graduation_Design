@@ -18,6 +18,10 @@ MainWindow::MainWindow(QWidget *parent)
     IsRead = false;
     m_Font.setPointSize(5);
     m_Font.setFamily("Microsoft YaHei");
+    ui->lbl_show1->setAttribute(Qt::WA_OpaquePaintEvent);
+    // 初始化画笔
+    pen = new QPen();
+
 }
 
 MainWindow::~MainWindow()
@@ -44,7 +48,7 @@ void MainWindow::on_btn_LoadImage_clicked()
     cvtColor(srcImage, srcImage,CV_BGR2RGB);
     // 然后把Mat图像的各类信息输入QImage函数，转换为QImage对象
     QImage displayImg = QImage(srcImage.data, srcImage.cols, srcImage.rows, srcImage.cols * srcImage.channels(), QImage::Format_RGB888); // Format_RGB888格式化为8位的图像
-    QImage disimage = imageCenter(displayImg, ui->lbl_show1);   // 调用下面自定义的imageCenter函数，得到居中的QImage图像
+    disimage = imageCenter(displayImg, ui->lbl_show1);   // 调用下面自定义的imageCenter函数，得到居中的QImage图像
     // 显示图像到页面lbl_show1组件中（往setPixmap函数传入QImage对象）
     ui->lbl_show1->setPixmap(QPixmap::fromImage(disimage));
     IsRead = true;
@@ -191,8 +195,9 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
         // bug：此时点坐标是以label左上角为原点，但画的时候，画布是图片pixmap的左上角，所以又发生了偏移，向下偏移
         // 要是能把整个Label当画布就好了，可惜不行，虽然语法不报错，但运行后输出：QPainter::setPen: Painter not active；
-        // 或者要是能把点坐标转为以pixmap的左上角就好了，可惜也不行，pixmap对象没有转换坐标的mapFrom函数。所以就直接修改每个点的y值
-//        pixmap = ui->lbl_show1->pixmap()->copy(QRect(0,0,w,h));
+        // 或者要是能把点坐标转为以pixmap的左上角就好了，可惜也不行，pixmap对象没有转换坐标的mapFrom函数。
+        // 解决办法：直接修改每个点的y值
+        // pixmap = ui->lbl_show1->pixmap()->copy(QRect(0,0,w,h));
         pixmap = ui->lbl_show1->pixmap()->copy();
         QPainter painter(&pixmap);
 
@@ -206,17 +211,23 @@ void MainWindow::paintEvent(QPaintEvent *event)
         for(int i=0;i<pointList.size();i++)
         {
             myPoint mypoint=pointList[i];
-            QPen pen(QBrush(QColor(mypoint.m_r,mypoint.m_g,mypoint.m_b)),5);  // 线条宽度为5个像素
-            painter.setPen(pen);
+//            QPen pen(QBrush(QColor(mypoint.m_r,mypoint.m_g,mypoint.m_b)),5);  // 线条宽度为5个像素
+
+//            pen->setCapStyle(Qt::PenCapStyle::RoundCap);   //设为圆角之后，虽不报错，但画不出来了是为什么
+            pen->setWidth(5);  //粗细
+            pen->setColor(QColor(mypoint.m_r,mypoint.m_g,mypoint.m_b));
+            pen->setStyle(Qt::PenStyle::SolidLine);
+
+//            painter.setPen(pen);
+            painter.setPen(*pen);
             painter.drawLine(mypoint.point.x(),mypoint.point.y(),mypoint.movePoint.x(),mypoint.movePoint.y());
         }
 
-        if(needUpdate){
-            // 将绘制好的图像设置为Label的显示内容
-            ui->lbl_show1->setPixmap(pixmap);
-            // 更新完毕后将标志设置为 false，避免无限循环
-            needUpdate = false;
-        }
+        // ================将绘制好的图像设置为Label的显示内容
+        // 出现了循环调用的原因：setPixmap重绘QLabel时，会内置调用QWidget的paintEvent。
+        // 解决方法就是给QLabel指定“WA_OpaquePaintEvent”属性，避免透明背景，这样下层的控件图层不需要重绘来实现本控件的透明效果。
+        ui->lbl_show1->setPixmap(pixmap);
+
     }
 
 }
@@ -232,7 +243,8 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
 
 void MainWindow::mouseMoveEvent(QMouseEvent *event)
 {
-    if(event->buttons()==Qt::LeftButton&&m_bCliked)
+    qDebug()<<"这是鼠标移动事件";
+    if(event->buttons()==Qt::LeftButton&&m_bCliked&&IsRead)
     {
 //        m_movePoint = event->pos();
 //        m_Point = event->pos();
@@ -282,7 +294,9 @@ void MainWindow::mouseReleaseEvent(QMouseEvent *event)
 void MainWindow::onDeleteClicked()
 {
     pointList.clear();
+    needUpdate = true;
     update();
+    ui->lbl_show1->setPixmap(QPixmap::fromImage(disimage));
 }
 
 void MainWindow::onColorClicked()

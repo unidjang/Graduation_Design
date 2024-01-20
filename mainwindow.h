@@ -36,6 +36,8 @@ public:
     QImage imageCenter(QImage qimage, QLabel *qLabel);
     bool needUpdate;
     bool IsRead;
+    QImage disimage;
+    QPen *pen;
 
 protected:
     void paintEvent(QPaintEvent *event);
