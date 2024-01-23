@@ -25,7 +25,9 @@ MainWindow::MainWindow(QWidget *parent)
     ToolType = 0;
     // 初始化画布
     pixmap_mouse = new QPixmap(ui->lbl_show1->size());   // 每次都清空画布，重新画。要画的点一次比一次多
-    pixmap_mouse->fill(Qt::transparent);
+    pixmap_mouse->fill(Qt::transparent);    // 设为透明
+
+    ui->horizontalSlider->setValue(20);
 }
 
 MainWindow::~MainWindow()
@@ -39,6 +41,7 @@ MainWindow::~MainWindow()
  */
 void MainWindow::on_btn_LoadImage_clicked()
 {
+    clearLBL1();
     QString imageFilePath = QFileDialog::getOpenFileName(this, tr("打开图像"),"F:/QTCV/Graduation_Design/Pictures","(所有图像(*.jpg *.png *.bmp))");
     if (imageFilePath.isEmpty())
     {
@@ -79,51 +82,6 @@ QImage MainWindow::imageCenter(QImage  qimage,QLabel *qLabel)
 }
 
 /**
- * @brief MainWindow::on_btn_Gray_clicked
- * 灰度化处理
- */
-void MainWindow::on_btn_Gray_clicked()
-{
-    if (srcImage.empty())
-    {
-        return;
-    }
-    Mat resultImage;
-    // 灰度处理
-    cvtColor(srcImage, resultImage, COLOR_BGR2GRAY);   // srcImage是类内对象，在加载图片时的函数内已经赋值
-
-    // 灰度图是单通道的，要转为三通道，否则下面QImage函数所需的信息将无法提供。转为RGB和BGR都行
-    cvtColor(resultImage, resultImage, COLOR_GRAY2BGR);
-
-    // ==========================然后下面就是固定的三行操作，把处理后的图片进行显示
-    // Mat转换为QImage对象并居中
-    QImage displayImg = QImage(resultImage.data, resultImage.cols, resultImage.rows, resultImage.cols * resultImage.channels(), QImage::Format_RGB888);
-    QImage disimage = imageCenter(displayImg, ui->lbl_show2);
-    // 显示图像到页面
-    ui->lbl_show2->setPixmap(QPixmap::fromImage(disimage));
-}
-
-/**
- * @brief MainWindow::on_btn_MeanImage_clicked
- * 均值滤波处理（变模糊，消除噪点，比如白色背景中的小黑点）
- */
-void MainWindow::on_btn_MeanImage_clicked()
-{
-    if (srcImage.empty())
-    {
-        return;
-    }
-    Mat blurImage;
-    // 调用均值滤波方法（滤波核尺寸越大，处理后越模糊，处理噪点的能力越强）
-    blur(srcImage, blurImage, Size(10,10));       // 这里不需要转为RGB，可能是因为blur后正好是RGB顺序
-    // Mat转换为QImage对象
-    QImage displayImg = QImage(blurImage.data, blurImage.cols, blurImage.rows, blurImage.cols * blurImage.channels(), QImage::Format_RGB888);
-    QImage disimage = imageCenter(displayImg, ui->lbl_show2);
-    // 显示图像到页面
-    ui->lbl_show2->setPixmap(QPixmap::fromImage(disimage));
-}
-
-/**
  * @brief MainWindow::on_btn_canny_clicked
  * 边缘检测:针对是灰度
  */
@@ -133,47 +91,53 @@ void MainWindow::on_btn_canny_clicked()
     {
         return;
     }
-    // 把划线后的QPixmap图片类型转为Mat类型
-    QImage myImage = ui->lbl_show1->pixmap()->toImage();
-    Mat srcImage(myImage.height(), myImage.width(), CV_8UC4, myImage.bits(), myImage.bytesPerLine());
 
-    // 然后就是视频中的原装代码
-    Mat edgeImage, grayImage;
-    // 把srcImage转为单通道灰度图grayImage（因为这样便于处理，毕竟彩色图像就要分析3组原色的梯度，而灰度图像只要1组）
-    cvtColor(srcImage, grayImage, COLOR_BGR2GRAY);
-
-    // 法一：使用Sobel函数，计算xy方向的边缘检测图并加权（三个方法中最精密的，轮廓最清晰）
-    Mat sobel_x, sobel_y;
-    Sobel(grayImage, sobel_x,CV_8U,1, 0);  // 最后两个参数，参数dx表示x轴方向的求导阶数,参数dy表示y轴方向的求导阶数
-    Sobel(grayImage, sobel_y,CV_8U,0, 1);
-    // 把xy方向加权平均法（直接拿sobel_x当成edgeImage也行，就是只能显示出一个方向上检测到的边缘线）
-    // 在这部分就是可以进行更好的算法设计，让边缘检测的效果更好。
-    addWeighted(sobel_x, 0.5, sobel_y, 0.5, 0, edgeImage);
-
-    threshold(edgeImage, edgeImage, 30, 255, cv::THRESH_BINARY);  // 灰度超过30就设为255
-
-    // ==========================最后进行显示
-    // 转换为RGB类型图像
-    cvtColor(edgeImage, edgeImage, COLOR_GRAY2BGR);
-    // Mat转换为QImage对象
-    QImage displayImg = QImage(edgeImage.data, edgeImage.cols, edgeImage.rows, edgeImage.cols * edgeImage.channels(), QImage::Format_RGB888);
+    // 法一：拖动slider
+    dst.create(srcImage.size(), srcImage.type());  // TODO 移到这里了
+    cv::cvtColor(srcImage, grayImage, cv::COLOR_BGR2GRAY);
+    cannyProc(grayImage, 20);
+    // 进行显示
+    QImage displayImg = QImage(dst.data, dst.cols, dst.rows, dst.cols * dst.channels(), QImage::Format_RGB888);
     QImage disimage = imageCenter(displayImg, ui->lbl_show2);
     // 显示图像到页面
     ui->lbl_show2->setPixmap(QPixmap::fromImage(disimage));
 
-    // 设置鼠标跟踪，以便捕获鼠标移动事件
-    ui->lbl_show2->setMouseTracking(true);
+    // 法二法三
+//    sobel();
+}
 
-//    // 在这个pixmap上划线？画完之后再转为mat，再进行一次上面的边缘检测
-//    const QPixmap *pixmap = ui->lbl_show2->pixmap();
+void MainWindow::cannyProc(cv::Mat greyImg, int low)
+{
+    if(greyImg.empty())
+        return;
+    if(greyImg.channels()>1)
+        return;
+//    lowThreshold = low;
+    qDebug() << "start blur";
+    cv::blur(greyImg, detected_edges, cv::Size(3,3));
+    qDebug() << "start canny";
+    cv::Canny(detected_edges, detected_edges, low, low*ratio, kernel_size);
+    dst= cv::Scalar::all(0);
+    qDebug() << "start copy";
+    srcImage.copyTo(dst, detected_edges);    // 这里出错了
+//    out = dst;
 
-
-    // =========================还有两种边缘检测算法如下，移到上面即可使用
-    // 法二：调用canny边缘检测函数
-    // 图片grayImage是单通道的，所以推测Canny就是要输入单通道灰度图才能进行边缘检测。输出的edgeImage也是单通道灰度图
-//    Canny(grayImage, edgeImage, 200, 1);    // 两个阈值分别设为200和1（but具体啥意思）
-    // 法三：拉普拉斯边缘检测
-//     Laplacian(grayImage, edgeImage, grayImage.depth());
+    //查找轮廓
+    std::vector<std::vector<cv::Point>> contours;
+    std::vector<cv::Vec4i> hierarchy;
+    cv::findContours(detected_edges,contours,hierarchy,cv::RETR_TREE,cv::CHAIN_APPROX_SIMPLE,cv::Point());
+    cv::Mat imageContours=cv::Mat::zeros(srcImage.size(),CV_8UC1);  //轮廓
+    cv::Mat marks(srcImage.size(),CV_32S);   //Opencv分水岭第二个矩阵参数
+    marks=cv::Scalar::all(0);
+    int index = 0;
+    int compCount = 0;
+    for( ; index >= 0; index = hierarchy[index][0], compCount++ )
+    {
+        //对marks进行标记，对不同区域的轮廓进行编号，相当于设置注水点，有多少轮廓，就有多少注水点
+        cv::drawContours(marks, contours, index, cv::Scalar::all(compCount+1), 1, 8, hierarchy);
+        cv::drawContours(imageContours,contours,index,cv::Scalar(255),1,8,hierarchy);
+        cv::drawContours(dst, contours, index, cv::Scalar::all(compCount+1), 1, 8, hierarchy);
+    }
 }
 
 
@@ -192,6 +156,7 @@ void MainWindow::CreateMenu()
 
 void MainWindow::paintEvent(QPaintEvent *event)
 {
+    event->ignore();
     // 此处代码已封装到Draw函数
 
 }
@@ -334,4 +299,79 @@ void MainWindow::MyDraw(QPoint m_Point,QPoint m_movePoint){
 //        ui->lbl_show1->setPixmap(pixmap);
 
     ui->label->setPixmap(*pixmap_mouse);  // TODO：但是为啥label的setPixmap不会触发paintEvent？
+}
+
+
+
+// 法二法三
+void MainWindow::sobel(){
+    // 把划线后的QPixmap图片类型转为Mat类型
+    QImage myImage = ui->lbl_show1->pixmap()->toImage();
+    Mat srcImage(myImage.height(), myImage.width(), CV_8UC4, myImage.bits(), myImage.bytesPerLine());
+
+
+    // 然后就是视频中的原装代码
+    // 把srcImage转为单通道灰度图grayImage（因为这样便于处理，毕竟彩色图像就要分析3组原色的梯度，而灰度图像只要1组）
+    cvtColor(srcImage, grayImage, COLOR_BGR2GRAY);
+
+
+    // 法一：使用Sobel函数，计算xy方向的边缘检测图并加权（三个方法中最精密的，轮廓最清晰）
+    Mat sobel_x, sobel_y;
+    Sobel(grayImage, sobel_x,CV_8U,1, 0);  // 最后两个参数，参数dx表示x轴方向的求导阶数,参数dy表示y轴方向的求导阶数
+    Sobel(grayImage, sobel_y,CV_8U,0, 1);
+    // 把xy方向加权平均法（直接拿sobel_x当成edgeImage也行，就是只能显示出一个方向上检测到的边缘线）
+    // 在这部分就是可以进行更好的算法设计，让边缘检测的效果更好。
+    addWeighted(sobel_x, 0.5, sobel_y, 0.5, 0, edgeImage);
+
+    threshold(edgeImage, edgeImage, 30, 255, cv::THRESH_BINARY);  // 灰度超过30就设为255
+
+    // ==========================最后进行显示
+    // 转换为RGB类型图像
+    cvtColor(edgeImage, edgeImage, COLOR_GRAY2BGR);
+    // Mat转换为QImage对象
+    QImage displayImg = QImage(edgeImage.data, edgeImage.cols, edgeImage.rows, edgeImage.cols * edgeImage.channels(), QImage::Format_RGB888);
+    QImage disimage = imageCenter(displayImg, ui->lbl_show2);
+    // 显示图像到页面
+    ui->lbl_show2->setPixmap(QPixmap::fromImage(disimage));
+
+    // 设置鼠标跟踪，以便捕获鼠标移动事件
+    ui->lbl_show2->setMouseTracking(true);
+
+//    // 在这个pixmap上划线？画完之后再转为mat，再进行一次上面的边缘检测
+//    const QPixmap *pixmap = ui->lbl_show2->pixmap();
+
+
+    // =========================还有两种边缘检测算法如下，移到上面即可使用
+    // 法二：调用canny边缘检测函数
+    // 图片grayImage是单通道的，所以推测Canny就是要输入单通道灰度图才能进行边缘检测。输出的edgeImage也是单通道灰度图
+//    Canny(grayImage, edgeImage, 200, 1);    // 两个阈值分别设为200和1（but具体啥意思）
+    // 法三：拉普拉斯边缘检测
+//     Laplacian(grayImage, edgeImage, grayImage.depth());
+}
+
+void MainWindow::on_horizontalSlider_valueChanged(int value)
+{
+    qDebug() << "value: " << value;
+    if(grayImage.empty())
+        return;
+    cv::Mat tmp;
+    cannyProc(grayImage, double(value));
+    //cv::threshold(grayImage, tmp, double(value), 255., cv::THRESH_BINARY);
+
+    QImage displayImg = QImage(dst.data, dst.cols, dst.rows, dst.cols * dst.channels(), QImage::Format_RGB888);
+    QImage disimage = imageCenter(displayImg, ui->lbl_show2);  // 居中
+    // 显示图像到页面
+    ui->lbl_show2->setPixmap(QPixmap::fromImage(disimage));
+
+}
+
+void MainWindow::clearLBL1()
+{
+    QImage displayImg(srcImage.cols,srcImage.rows,QImage::Format_RGB32);
+    displayImg.fill(Qt::black);
+
+//    QImage displayImg = QImage(whiteImage.data, srcImage.cols, srcImage.rows, srcImage.cols * srcImage.channels(), QImage::Format_RGB888);
+    QImage disimage = imageCenter(displayImg, ui->lbl_show1);
+    // 显示图像到页面
+    ui->lbl_show1->setPixmap(QPixmap::fromImage(disimage));
 }

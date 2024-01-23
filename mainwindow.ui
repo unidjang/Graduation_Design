@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>956</width>
-    <height>600</height>
+    <width>1144</width>
+    <height>707</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,8 +17,8 @@
    <widget class="QGroupBox" name="horizontalGroupBox">
     <property name="geometry">
      <rect>
-      <x>30</x>
-      <y>30</y>
+      <x>120</x>
+      <y>50</y>
       <width>891</width>
       <height>71</height>
      </rect>
@@ -31,20 +31,6 @@
       <widget class="QPushButton" name="btn_LoadImage">
        <property name="text">
         <string>加载图像</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="btn_Gray">
-       <property name="text">
-        <string>灰度化</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="btn_MeanImage">
-       <property name="text">
-        <string>均值滤波</string>
        </property>
       </widget>
      </item>
@@ -62,13 +48,20 @@
        </property>
       </widget>
      </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_2">
+       <property name="text">
+        <string>圈区域</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </widget>
    <widget class="QGroupBox" name="groupBox">
     <property name="geometry">
      <rect>
-      <x>30</x>
-      <y>110</y>
+      <x>120</x>
+      <y>220</y>
       <width>431</width>
       <height>461</height>
      </rect>
@@ -111,7 +104,7 @@
       <enum>QFrame::Panel</enum>
      </property>
      <property name="text">
-      <string>TextLabel</string>
+      <string/>
      </property>
      <property name="textFormat">
       <enum>Qt::AutoText</enum>
@@ -121,8 +114,8 @@
    <widget class="QGroupBox" name="groupBox_2">
     <property name="geometry">
      <rect>
-      <x>490</x>
-      <y>110</y>
+      <x>580</x>
+      <y>220</y>
       <width>431</width>
       <height>461</height>
      </rect>
@@ -146,6 +139,37 @@
       <string/>
      </property>
     </widget>
+   </widget>
+   <widget class="QSlider" name="horizontalSlider">
+    <property name="geometry">
+     <rect>
+      <x>180</x>
+      <y>180</y>
+      <width>745</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="orientation">
+     <enum>Qt::Horizontal</enum>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_2">
+    <property name="geometry">
+     <rect>
+      <x>180</x>
+      <y>150</y>
+      <width>101</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>11</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>调整阈值</string>
+    </property>
    </widget>
   </widget>
  </widget>

@@ -7,6 +7,7 @@
 #include <QWidget>
 #include <QPainter>
 #include <QMenu>
+#include "cv2qt.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -44,12 +45,15 @@ public:
     int ToolType;
     QPixmap *pixmap_mouse;
 
+    void cannyProc(cv::Mat in, int low);
+
+    void sobel();
 protected:
     void paintEvent(QPaintEvent *event);
     void mousePressEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
-
+    void clearLBL1();
 public slots:
     void onDeleteClicked();
     void onColorClicked();
@@ -57,13 +61,11 @@ public slots:
 private slots:
     void on_btn_LoadImage_clicked();
 
-    void on_btn_Gray_clicked();
-
-    void on_btn_MeanImage_clicked();
-
     void on_btn_canny_clicked();
 
     void on_pushButton_clicked();
+
+    void on_horizontalSlider_valueChanged(int value);
 
 private:
     QPainter *painter;
@@ -74,7 +76,7 @@ private:
     bool m_bCliked=false;
     QPoint m_Point;
     QPoint m_movePoint;
-
+    Mat edgeImage, grayImage;
     QMenu *m_pMenu=nullptr;
 
     QFont m_Font;
@@ -84,6 +86,18 @@ private:
     int m_R=255;
     int m_G=0;
     int m_B=0;
+
+//    cv::Mat src;
+    cv::Mat srcGray;
+    cv::Mat dst;
+    cv::Mat detected_edges;
+//    int edgeThres = 1;
+//    int lowThreshold;
+//    int max_lowThreshold;
+    int ratio = 3;
+    int kernel_size = 3;
+
+    CV2Qt cv2qt;
 
 };
 #endif // MAINWINDOW_H
