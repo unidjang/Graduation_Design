@@ -40,6 +40,8 @@ public:
 
     bool needUpdate;
     bool IsRead;
+    Mat disimage_mat;
+    Mat OLPix_mat;
     QImage disimage;
     QPen *pen;
     int ToolType;
@@ -53,7 +55,7 @@ protected:
     void mousePressEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
     void mouseReleaseEvent(QMouseEvent *event);
-    void clearLBL1();
+    void clearLeft();
 public slots:
     void onDeleteClicked();
     void onColorClicked();
