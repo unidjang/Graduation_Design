@@ -139,8 +139,8 @@ void MainWindow::cannyProc(cv::Mat greyImg, int low)
     if(ui->label->pixmap() == nullptr){
         disimage_mat.copyTo(dst, detected_edges); // 将源图像（disimage_mat）中的边缘信息复制到目标图像（dst）中
     }else{
-//        disimage_mat.copyTo(dst, detected_edges);  // 这行代码能让滑块正常运行，但一滑动就会出现图片水平伸展。
-        OLPix_mat.copyTo(dst, detected_edges);  // 这代码的滑块异动就异常结束。跟Format_RGB32肯定有关
+        disimage_mat.copyTo(dst, detected_edges);  // 这行代码能让滑块正常运行，但一滑动就会出现图片水平伸展，紧接着改为Format_RGB32即可
+//        OLPix_mat.copyTo(dst, detected_edges);  // 这代码的滑块异动就异常结束。
     }
     //图像的水平伸展跟下面这段代码无关
     //查找轮廓
@@ -171,8 +171,13 @@ void MainWindow::on_horizontalSlider_valueChanged(int value)
     cv::Mat tmp;
     cannyProc(grayImage, double(value));
     //cv::threshold(grayImage, tmp, double(value), 255., cv::THRESH_BINARY);
+    QImage temp_disimage;
+    if(ui->label->pixmap() == nullptr){
+        temp_disimage = QImage(dst.data, dst.cols, dst.rows, dst.cols * dst.channels(), QImage::Format_RGB888);
+    }else{
+        temp_disimage = QImage(dst.data, dst.cols, dst.rows, dst.cols * dst.channels(), QImage::Format_RGB32);
+    }
 
-    QImage temp_disimage = QImage(dst.data, dst.cols, dst.rows, dst.cols * dst.channels(), QImage::Format_RGB888);
     temp_disimage = imageCenter(temp_disimage, ui->lbl_show2);  // 居中
     // 显示图像到页面
     ui->lbl_show2->setPixmap(QPixmap::fromImage(temp_disimage));
@@ -321,7 +326,7 @@ void MainWindow::MyDraw(QPoint m_Point,QPoint m_movePoint){
     pen->setCapStyle(Qt::PenCapStyle::RoundCap);   //设为圆角
     pen->setWidth(5);  //粗细
 //    pen->setColor(QColor(mypoint.m_r,mypoint.m_g,mypoint.m_b));
-    pen->setColor(Qt::red);
+    pen->setColor(Qt::yellow);
     pen->setStyle(Qt::PenStyle::SolidLine);
 
     painter.setPen(*pen);

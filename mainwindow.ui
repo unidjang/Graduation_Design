@@ -17,9 +17,9 @@
    <widget class="QGroupBox" name="horizontalGroupBox">
     <property name="geometry">
      <rect>
-      <x>120</x>
+      <x>90</x>
       <y>50</y>
-      <width>891</width>
+      <width>971</width>
       <height>71</height>
      </rect>
     </property>
@@ -52,6 +52,13 @@
       <widget class="QPushButton" name="pushButton_2">
        <property name="text">
         <string>圈区域</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_3">
+       <property name="text">
+        <string>进行排料</string>
        </property>
       </widget>
      </item>
@@ -121,7 +128,7 @@
      </rect>
     </property>
     <property name="title">
-     <string>处理后图像</string>
+     <string>边缘检测后图像</string>
     </property>
     <widget class="QLabel" name="lbl_show2">
      <property name="geometry">
@@ -158,7 +165,7 @@
      <rect>
       <x>180</x>
       <y>150</y>
-      <width>101</width>
+      <width>171</width>
       <height>21</height>
      </rect>
     </property>
@@ -168,7 +175,7 @@
      </font>
     </property>
     <property name="text">
-     <string>调整阈值</string>
+     <string>调整Canny阈值</string>
     </property>
    </widget>
   </widget>
